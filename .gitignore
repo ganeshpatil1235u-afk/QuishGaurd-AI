@@ -1,0 +1,10 @@
+backend/venv/
+**/__pycache__/
+*.pyc
+.env
+frontend/.dart_tool/
+frontend/build/
+.idea/
+.vscode/
+Thumbs.db
+*.log
