@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "QuishGuard AI — Zero-Day QR Shield",
+  "version": "2.0.0",
+  "description": "QR phishing and UPI fraud defense",
+  "permissions": ["activeTab", "contextMenus", "storage"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "QuishGuard AI"
+  }
+}

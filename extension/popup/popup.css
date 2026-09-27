@@ -1,0 +1,58 @@
+body {
+  margin: 0;
+  width: 340px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: Segoe UI, Arial, sans-serif;
+}
+.wrap { padding: 14px; }
+h1 { margin: 0; font-size: 18px; color: #a5b4fc; }
+.sub { margin: 4px 0 12px; color: #64748b; font-size: 12px; }
+.stats { display: flex; gap: 8px; margin-bottom: 12px; }
+.stats div {
+  flex: 1;
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+.stats b { display: block; font-size: 20px; color: #818cf8; }
+.stats span { font-size: 11px; color: #94a3b8; }
+textarea, input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+}
+button {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #6366f1;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:disabled { background: #334155; }
+.out {
+  margin-top: 10px;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12px;
+}
+.hidden { display: none; }
+.crit { border: 1px solid #ef4444; color: #fca5a5; }
+.safe { border: 1px solid #22c55e; color: #86efac; }
+.foot {
+  margin-top: 10px;
+  font-size: 10px;
+  color: #475569;
+  text-align: center;
+}
