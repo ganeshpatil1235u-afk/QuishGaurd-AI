@@ -1,91 +1,56 @@
 // extension/popup/popup.js
-const API = "http://localhost:8000/api/scan";
+
+const API        = "http://localhost:8000/api/scan";
 const HEALTH_API = "http://localhost:8000/api/health";
 
-let totalScans = 0;
+let totalScans   = 0;
 let totalThreats = 0;
 
 document.addEventListener("DOMContentLoaded", function () {
 
-  // Get elements AFTER DOM loads
+  // ── Grab Elements ──────────────────────────────────────
   const scansEl   = document.getElementById("scans");
   const threatsEl = document.getElementById("threats");
   const payloadEl = document.getElementById("payload");
   const contextEl = document.getElementById("context");
-  const scanBtn   = document.getElementById("scanBtn");
+  const btnEl     = document.getElementById("scanBtn");
   const outEl     = document.getElementById("out");
-  const footEl    = document.querySelector(".foot");
+  const footEl    = document.getElementById("footText");
 
-  // Load saved stats from Chrome storage
-  chrome.storage.local.get(["totalScans", "threatsBlocked"], function(data) {
-    totalScans   = data.totalScans     || 0;
-    totalThreats = data.threatsBlocked || 0;
-    scansEl.textContent   = totalScans;
-    threatsEl.textContent = totalThreats;
-  });
+  // ── Load Saved Counters ────────────────────────────────
+  chrome.storage.local.get(
+    ["totalScans", "threatsBlocked"],
+    function (saved) {
+      totalScans   = saved.totalScans     || 0;
+      totalThreats = saved.threatsBlocked || 0;
+      scansEl.textContent   = totalScans;
+      threatsEl.textContent = totalThreats;
+    }
+  );
 
-  // Check backend health
+  // ── Health Check ───────────────────────────────────────
   function checkHealth() {
     fetch(HEALTH_API)
-      .then(function(res) {
-        if (res.ok) {
-          footEl.textContent = "✅ Backend: Online | Manifest V3";
+      .then(function (r) {
+        if (r.ok) {
+          footEl.textContent = "✅ Backend: Online";
           footEl.style.color = "#22c55e";
         } else {
-          throw new Error("offline");
+          throw new Error("not ok");
         }
       })
-      .catch(function() {
-        footEl.textContent = "❌ Backend: Offline | Run python main.py";
+      .catch(function () {
+        footEl.textContent = "❌ Backend Offline — run python main.py";
         footEl.style.color = "#ef4444";
       });
   }
 
-  // Run health check immediately and every 8 seconds
   checkHealth();
   setInterval(checkHealth, 8000);
 
-  // Update counters on screen
-  function updateCounters(isThreat) {
-    totalScans += 1;
-    if (isThreat) totalThreats += 1;
+  // ── Scan Button ────────────────────────────────────────
+  btnEl.addEventListener("click", async function () {
 
-    // Update screen numbers directly
-    scansEl.textContent   = totalScans;
-    threatsEl.textContent = totalThreats;
-
-    // Save to Chrome storage
-    chrome.storage.local.set({
-      totalScans:     totalScans,
-      threatsBlocked: totalThreats
-    });
-  }
-
-  // Show result in output div
-  function showResult(data) {
-    const isThreat = 
-      data.risk_level === "CRITICAL" || 
-      data.risk_level === "HIGH";
-
-    // IMPORTANT: Remove "hidden" class AND set display block
-    outEl.classList.remove("hidden");
-    outEl.style.display = "block";
-
-    // Set color class
-    outEl.classList.remove("crit", "safe");
-    outEl.classList.add(isThreat ? "crit" : "safe");
-
-    // Show result text
-    outEl.innerHTML = 
-      "<b>" + data.risk_level + "</b>" +
-      " — " + data.threat_score + "/100" +
-      "<br/>" + data.verdict;
-
-    return isThreat;
-  }
-
-  // Scan button click
-  scanBtn.addEventListener("click", async function() {
     const payload = payloadEl.value.trim();
     const context = contextEl.value.trim();
 
@@ -94,19 +59,24 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    // Show loading
-    scanBtn.disabled = true;
-    scanBtn.textContent = "Scanning...";
+    // Disable button + show loading
+    btnEl.disabled    = true;
+    btnEl.textContent = "Scanning...";
 
-    // Show analyzing message
-    outEl.classList.remove("hidden");
-    outEl.style.display = "block";
-    outEl.classList.remove("crit", "safe");
-    outEl.textContent = "⏳ Analyzing threat...";
+    outEl.style.display    = "block";
+    outEl.style.marginTop  = "10px";
+    outEl.style.padding    = "10px";
+    outEl.style.borderRadius = "8px";
+    outEl.style.fontSize   = "12px";
+    outEl.style.background = "#1e293b";
+    outEl.style.border     = "1px solid #334155";
+    outEl.style.color      = "#e2e8f0";
+    outEl.textContent      = "⏳ Analyzing...";
 
     try {
+      // ── Call Backend ─────────────────────────────────
       const response = await fetch(API, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           qr_decoded_text: payload,
@@ -116,34 +86,57 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       if (!response.ok) {
-        throw new Error("Server error: " + response.status);
+        throw new Error("Server returned " + response.status);
       }
 
       const data = await response.json();
-      console.log("Scan result:", data);
 
-      // Show result
-      const isThreat = showResult(data);
+      const isThreat =
+        data.risk_level === "CRITICAL" ||
+        data.risk_level === "HIGH";
 
-      // Update counters
-      updateCounters(isThreat);
+      // ── Show Result ──────────────────────────────────
+      outEl.style.display     = "block";
+      outEl.style.border      = isThreat
+        ? "1px solid #ef4444"
+        : "1px solid #22c55e";
+      outEl.style.color       = isThreat ? "#fca5a5" : "#86efac";
+      outEl.style.background  = "#1e293b";
+      outEl.innerHTML =
+        "<b>" + data.risk_level + "</b>" +
+        " — " + data.threat_score + " / 100" +
+        "<br/><br/>" + data.verdict;
 
-      console.log("Counters updated - Scans:", totalScans, "Threats:", totalThreats);
+      // ── Update Counters ──────────────────────────────
+      totalScans += 1;
+      if (isThreat) totalThreats += 1;
+
+      scansEl.textContent   = totalScans;
+      threatsEl.textContent = totalThreats;
+
+      // ── Save to Chrome Storage ───────────────────────
+      chrome.storage.local.set({
+        totalScans:     totalScans,
+        threatsBlocked: totalThreats
+      });
 
     } catch (err) {
-      console.error("Scan failed:", err);
 
-      outEl.classList.remove("hidden");
-      outEl.style.display = "block";
-      outEl.classList.remove("safe");
-      outEl.classList.add("crit");
-      outEl.textContent = 
-        "❌ Cannot reach backend.\n" +
-        "Make sure python main.py is running!";
+      // ── Show Error ───────────────────────────────────
+      outEl.style.display    = "block";
+      outEl.style.border     = "1px solid #ef4444";
+      outEl.style.color      = "#fca5a5";
+      outEl.style.background = "#1e293b";
+      outEl.innerHTML =
+        "❌ <b>Backend unreachable</b><br/>" +
+        "Make sure backend is running:<br/>" +
+        "<code>python main.py</code>";
+
     } finally {
-      scanBtn.disabled = false;
-      scanBtn.textContent = "Scan with AI";
+      btnEl.disabled    = false;
+      btnEl.textContent = "Scan with AI";
     }
+
   });
 
 });
