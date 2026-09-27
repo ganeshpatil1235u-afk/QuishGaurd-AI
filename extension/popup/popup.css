@@ -8,16 +8,6 @@ body {
 .wrap { padding: 14px; }
 h1 { margin: 0; font-size: 18px; color: #a5b4fc; }
 .sub { margin: 4px 0 12px; color: #64748b; font-size: 12px; }
-.stats { display: flex; gap: 8px; margin-bottom: 12px; }
-.stats div {
-  flex: 1;
-  background: #1e293b;
-  border-radius: 10px;
-  padding: 10px;
-  text-align: center;
-}
-.stats b { display: block; font-size: 20px; color: #818cf8; }
-.stats span { font-size: 11px; color: #94a3b8; }
 textarea, input {
   width: 100%;
   box-sizing: border-box;
@@ -40,16 +30,6 @@ button {
   cursor: pointer;
 }
 button:disabled { background: #334155; }
-.out {
-  margin-top: 10px;
-  background: #1e293b;
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 12px;
-}
-.hidden { display: none; }
-.crit { border: 1px solid #ef4444; color: #fca5a5; }
-.safe { border: 1px solid #22c55e; color: #86efac; }
 .foot {
   margin-top: 10px;
   font-size: 10px;
