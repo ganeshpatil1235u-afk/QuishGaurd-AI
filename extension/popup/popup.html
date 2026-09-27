@@ -7,23 +7,39 @@
 </head>
 <body>
   <div class="wrap">
+
     <h1>🛡️ QuishGuard AI</h1>
     <p class="sub">Zero-Day QR and UPI Defense</p>
+
     <div class="stats">
-      <div><b id="scans">0</b><span>Scans</span></div>
-      <div><b id="threats">0</b><span>Threats</span></div>
+      <div>
+        <b id="scans">0</b>
+        <span>Scans</span>
+      </div>
+      <div>
+        <b id="threats">0</b>
+        <span>Threats</span>
+      </div>
     </div>
+
     <textarea
       id="payload"
       rows="4"
-      placeholder="Paste URL or UPI string here...">
-    </textarea>
+      placeholder="Paste URL or UPI string here...&#10;&#10;Example:&#10;upi://pay?pa=scam@ybl&am=5000"></textarea>
+
     <input
       id="context"
-      placeholder="Optional: text on sign e.g. Scan to RECEIVE Rs.5000" />
+      type="text"
+      placeholder="Optional: Scan to RECEIVE Rs.5000" />
+
     <button id="scanBtn">Scan with AI</button>
-    <div id="out" class="out hidden"></div>
-    <p class="foot">Backend: localhost:8000 | Manifest V3</p>
+
+    <div id="out" style="display:none;"></div>
+
+    <p id="footText" class="foot">
+      Checking backend...
+    </p>
+
   </div>
   <script src="popup.js"></script>
 </body>
