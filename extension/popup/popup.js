@@ -6,71 +6,52 @@ const HEALTH_API = "http://localhost:8000/api/health";
 const scanBtn = document.getElementById("scanBtn");
 const payloadInput = document.getElementById("payload");
 const contextInput = document.getElementById("context");
-const resultDiv = document.getElementById("result");
-const resultIcon = document.getElementById("resultIcon");
-const resultLevel = document.getElementById("resultLevel");
-const resultScore = document.getElementById("resultScore");
-const resultVerdict = document.getElementById("resultVerdict");
+const resultDiv = document.getElementById("out") || document.getElementById("result");
 const scansCount = document.getElementById("scans");
 const threatsCount = document.getElementById("threats");
-const statusDot = document.getElementById("statusDot");
-const statusText = document.getElementById("statusText");
 
-// Check backend health
-async function checkBackendHealth() {
-  try {
-    const response = await fetch(HEALTH_API, { 
-      method: "GET",
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.status === "healthy") {
-        statusDot.classList.add("online");
-        statusDot.classList.remove("offline");
-        statusText.textContent = "Backend: Online";
-        return true;
-      }
-    }
-    throw new Error("Backend not healthy");
-  } catch (error) {
-    console.error("Health check failed:", error);
-    statusDot.classList.add("offline");
-    statusDot.classList.remove("online");
-    statusText.textContent = "Backend: Offline";
-    return false;
-  }
+// Load counters from Chrome local storage on startup
+function refreshStats() {
+  chrome.storage.local.get(["totalScans", "threatsBlocked"], (stats) => {
+    if (scansCount) scansCount.textContent = stats.totalScans || 0;
+    if (threatsCount) threatsCount.textContent = stats.threatsBlocked || 0;
+  });
 }
 
-// Refresh stats from storage
-function refreshStats() {
-  chrome.runtime.sendMessage({ type: "QG_STATS" }, (stats) => {
-    if (stats) {
-      scansCount.textContent = stats.totalScans || 0;
-      threatsCount.textContent = stats.threatsBlocked || 0;
-    }
+// Update stats after a successful scan
+function incrementStats(riskLevel) {
+  const isThreat = riskLevel === "CRITICAL" || riskLevel === "HIGH";
+  
+  chrome.storage.local.get(["totalScans", "threatsBlocked"], (stats) => {
+    const newScans = (stats.totalScans || 0) + 1;
+    const newThreats = (stats.threatsBlocked || 0) + (isThreat ? 1 : 0);
+    
+    chrome.storage.local.set({
+      totalScans: newScans,
+      threatsBlocked: newThreats
+    }, () => {
+      // Immediately update UI numbers on screen
+      if (scansCount) scansCount.textContent = newScans;
+      if (threatsCount) threatsCount.textContent = newThreats;
+    });
   });
 }
 
 // Scan button click handler
 scanBtn.addEventListener("click", async () => {
   const payload = payloadInput.value.trim();
-  const context = contextInput.value.trim();
+  const context = contextInput ? contextInput.value.trim() : "";
   
-  if (!payload) {
-    alert("Please paste a URL or UPI string to scan");
-    return;
-  }
+  if (!payload) return;
   
-  // Show loading state
   scanBtn.disabled = true;
-  scanBtn.querySelector(".btn-text").textContent = "Scanning...";
-  resultDiv.classList.remove("hidden", "critical", "high", "medium", "safe");
-  resultLevel.textContent = "ANALYZING...";
-  resultScore.textContent = "--/100";
-  resultVerdict.textContent = "Please wait...";
-  resultDiv.classList.remove("hidden");
+  scanBtn.textContent = "Scanning...";
+  
+  if (resultDiv) {
+    resultDiv.classList.remove("hidden", "crit", "safe", "critical", "high", "medium");
+    resultDiv.innerHTML = "Scanning with AI...";
+    resultDiv.style.display = "block";
+  }
   
   try {
     const response = await fetch(API, {
@@ -84,90 +65,34 @@ scanBtn.addEventListener("click", async () => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `API error: ${response.status}`);
+      throw new Error(`Server returned ${response.status}`);
     }
     
     const data = await response.json();
-    displayResult(data);
-    refreshStats();
+    
+    // 1. Display verdict
+    const bad = data.risk_level === "CRITICAL" || data.risk_level === "HIGH";
+    if (resultDiv) {
+      resultDiv.classList.add(bad ? "crit" : "safe");
+      resultDiv.innerHTML = `<b>[${data.risk_level}] ${data.threat_score}/100</b><br/>${data.verdict}`;
+    }
+    
+    // 2. Increment & save counters!
+    incrementStats(data.risk_level);
     
   } catch (error) {
-    console.error("Scan failed:", error);
-    resultDiv.classList.add("critical");
-    resultIcon.textContent = "❌";
-    resultLevel.textContent = "ERROR";
-    resultScore.textContent = "N/A";
-    resultVerdict.textContent = 
-      "Cannot reach backend at localhost:8000.\n\n" +
-      "Make sure M2's server is running:\n" +
-      "cd backend && python main.py";
+    if (resultDiv) {
+      resultDiv.classList.add("crit");
+      resultDiv.textContent = "Backend unreachable on localhost:8000. Is python main.py running?";
+    }
   } finally {
     scanBtn.disabled = false;
-    scanBtn.querySelector(".btn-text").textContent = "Scan with AI";
+    scanBtn.textContent = "Scan with AI";
   }
 });
 
-// Display scan result
-function displayResult(data) {
-  const riskLevel = (data.risk_level || "UNKNOWN").toLowerCase();
-  
-  // Clear previous classes
-  resultDiv.className = "result";
-  
-  // Set color theme
-  resultDiv.classList.add(riskLevel);
-  
-  // Set icon
-  const icons = {
-    critical: "🚨",
-    high: "⚠️",
-    medium: "⚡",
-    safe: "✅",
-    unknown: "❓"
-  };
-  resultIcon.textContent = icons[riskLevel] || "❓";
-  
-  // Set level text
-  resultLevel.textContent = data.risk_level || "UNKNOWN";
-  
-  // Set score
-  resultScore.textContent = `${data.threat_score || 0}/100`;
-  
-  // Set verdict
-  resultVerdict.textContent = data.verdict || "No verdict available";
-  
-  // Show result
-  resultDiv.classList.remove("hidden");
-}
-
-// Initialize on popup open
+// Initialize on load
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("QuishGuard popup loaded");
-  
-  // Check backend health immediately
-  checkBackendHealth();
-  
-  // Refresh stats
   refreshStats();
-  
-  // Focus on input
-  payloadInput.focus();
-  
-  // Check health every 10 seconds
-  setInterval(checkBackendHealth, 10000);
-});
-
-// Allow Ctrl+Enter to submit from textarea
-payloadInput.addEventListener("keydown", (e) => {
-  if (e.ctrlKey && e.key === "Enter") {
-    scanBtn.click();
-  }
-});
-
-// Enter key in context input triggers scan
-contextInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    scanBtn.click();
-  }
+  if (payloadInput) payloadInput.focus();
 });
