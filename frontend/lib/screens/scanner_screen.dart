@@ -48,8 +48,10 @@ class _ScannerScreenState extends State<ScannerScreen>
     defaultValue: 'http://192.168.1.20:8000',
   );
 
-  static String get apiUrl => '$backendBaseUrl/api/scan';
-  static String get healthUrl => '$backendBaseUrl/api/health';
+  // /api/v2/* routes only exist in the UPDATED backend. An old backend returns
+  // 404 here, so the app can never silently use old scoring logic.
+  static String get apiUrl => '$backendBaseUrl/api/v2/scan';
+  static String get healthUrl => '$backendBaseUrl/api/v2/health';
 
   @override
   void initState() {
@@ -107,18 +109,27 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
-  // Check backend health
+  // Check backend health (uses /api/v2/health: an OLD backend has no such route)
   Future<void> _checkBackend() async {
     try {
       final res = await http
           .get(Uri.parse(healthUrl))
           .timeout(const Duration(seconds: 5));
 
+      if (!mounted) return;
       if (res.statusCode == 200) {
-        if (!mounted) return;
+        String v = "";
+        try {
+          v = (jsonDecode(res.body)["version"] ?? "").toString();
+        } catch (_) {}
         setState(() {
-          _backendStatus = "✅ Online";
+          _backendStatus = v.isEmpty ? "✅ Online" : "✅ Online v$v";
           _statusColor = const Color(0xFF22C55E);
+        });
+      } else if (res.statusCode == 404) {
+        setState(() {
+          _backendStatus = "⚠️ OLD backend";
+          _statusColor = const Color(0xFFEAB308);
         });
       } else {
         throw Exception();
@@ -277,6 +288,13 @@ class _ScannerScreenState extends State<ScannerScreen>
           ),
         );
 
+        _resetScanner();
+      } else if (res.statusCode == 404) {
+        _showMessage(
+          "OLD backend detected (no /api/v2/scan).\n"
+          "Stop the old server and start backend/main.py again.",
+          isError: true,
+        );
         _resetScanner();
       } else {
         _showMessage(
@@ -464,7 +482,15 @@ class _ScannerScreenState extends State<ScannerScreen>
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Server: $backendBaseUrl",
+                      style: const TextStyle(
+                        color: Colors.white24,
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
