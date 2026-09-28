@@ -7,6 +7,19 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- Android 11+ package visibility: needed to detect/launch PhonePe & UPI apps -->
+    <queries>
+        <package android:name="com.phonepe.app" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="phonepe" />
+        </intent>
+    </queries>
+
     <application
         android:label="QuishGuard AI"
         android:name="${applicationName}"
@@ -31,6 +44,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Impeller renders the camera preview BLACK on several Android phones
+             (Xiaomi/Poco/Redmi etc). Skia renderer fixes it. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
 
         <meta-data
             android:name="flutterEmbedding"
