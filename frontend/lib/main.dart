@@ -21,6 +21,13 @@ class QuishGuardApp extends StatelessWidget {
         textTheme: GoogleFonts.interTextTheme(
           ThemeData.dark().textTheme,
         ),
+        // Fixes invisible button text (text colour was equal to button colour)
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF6366F1),
+            foregroundColor: Colors.white,
+          ),
+        ),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF6366F1),
           secondary: Color(0xFF22C55E),
