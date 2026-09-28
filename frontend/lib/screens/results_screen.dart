@@ -323,6 +323,20 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
             const SizedBox(height: 16),
 
+            _card(
+              "🔧 Debug",
+              result["engine_version"] != null
+                  ? "Backend engine: ${result["engine_version"]}"
+                  : "⚠️ OLD BACKEND: this phone is NOT using your updated code",
+              borderColor: result["engine_version"] != null
+                  ? null
+                  : const Color(0xFFEF4444),
+              textColor: result["engine_version"] != null
+                  ? null
+                  : const Color(0xFFEF4444),
+            ),
+            const SizedBox(height: 12),
+
             // PhonePe redirect (SAFE only) / override (MEDIUM only)
             _phonePeSection(color),
 
