@@ -115,6 +115,14 @@ def scan(request: ScanRequest):
         if crit:
             verdict = "🚨 " + crit[0]["detail"]
 
+    # Safe UPI payment QR -> app is allowed to hand off to PhonePe
+    safe_upi = is_upi and not is_url and risk == "SAFE"
+    if safe_upi:
+        who = upi_res.get("payee_name", "Unknown")
+        via = upi_res.get("known_psp")
+        verdict = (f"✅ SAFE. Payee: {who} ({upi_res.get('payee_vpa')})"
+                   + (f" on {via}." if via else "."))
+
     return {
         "scan_id": str(uuid.uuid4()),
         "threat_score": score,
@@ -124,7 +132,10 @@ def scan(request: ScanRequest):
         "verdict": verdict,
         "recommendation": ("DO NOT PROCEED. Report this QR."
                            if risk in ("CRITICAL", "HIGH")
-                           else "Proceed with normal caution."),
+                           else ("Verify the payee name in PhonePe before entering your PIN."
+                                 if safe_upi else "Proceed with normal caution.")),
+        # Flutter app uses this flag to decide whether to open PhonePe
+        "redirect_to_phonepe": safe_upi,
         "analysis": {
             "opencv_vision": vision_meta,
             "upi_analysis": upi_res,
