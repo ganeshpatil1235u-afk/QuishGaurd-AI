@@ -16,7 +16,12 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen>
     with WidgetsBindingObserver {
   // Controllers
-  MobileScannerController cameraController = MobileScannerController();
+  final MobileScannerController cameraController = MobileScannerController(
+    facing: CameraFacing.back,
+    torchEnabled: false,
+    formats: const [BarcodeFormat.qrCode],
+    detectionSpeed: DetectionSpeed.noDuplicates,
+  );
   final _contextCtrl = TextEditingController();
 
   // State
@@ -64,16 +69,32 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Only touch the camera when we own it: permission granted, not mid-scan.
+    if (!_hasPermission || _scanned) return;
     if (state == AppLifecycleState.resumed) {
-      cameraController.start();
+      _safeStart();
     } else if (state == AppLifecycleState.paused) {
-      cameraController.stop();
+      _safeStop();
     }
+  }
+
+  // start()/stop() throw if the camera is already in that state. Swallow it.
+  Future<void> _safeStart() async {
+    try {
+      await cameraController.start();
+    } catch (_) {}
+  }
+
+  Future<void> _safeStop() async {
+    try {
+      await cameraController.stop();
+    } catch (_) {}
   }
 
   // Request camera permission
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
+    if (!mounted) return;
     setState(() {
       _hasPermission = status.isGranted;
     });
@@ -94,6 +115,7 @@ class _ScannerScreenState extends State<ScannerScreen>
           .timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
+        if (!mounted) return;
         setState(() {
           _backendStatus = "✅ Online";
           _statusColor = const Color(0xFF22C55E);
@@ -102,6 +124,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         throw Exception();
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _backendStatus = "❌ Offline";
         _statusColor = const Color(0xFFEF4444);
@@ -125,8 +148,9 @@ class _ScannerScreenState extends State<ScannerScreen>
       _cameraActive = false;
     });
 
-    await cameraController.stop();
+    await _safeStop();
 
+    if (!mounted) return;
     _showQRConfirmDialog(qrData);
   }
 
@@ -210,8 +234,12 @@ class _ScannerScreenState extends State<ScannerScreen>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
             ),
-            child: const Text("Analyze Threat"),
+            child: const Text(
+              "Analyze Threat",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -271,6 +299,7 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   // Reset scanner to scan again
   void _resetScanner() {
+    if (!mounted) return;
     setState(() {
       _scanned = false;
       _cameraActive = true;
@@ -279,7 +308,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     _contextCtrl.clear();
 
     if (_hasPermission) {
-      cameraController.start();
+      _safeStart();
     }
   }
 
@@ -371,6 +400,15 @@ class _ScannerScreenState extends State<ScannerScreen>
                             MobileScanner(
                               controller: cameraController,
                               onDetect: _onQRDetected,
+                              fit: BoxFit.cover,
+                              placeholderBuilder: (context, child) =>
+                                  const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF6366F1),
+                                ),
+                              ),
+                              errorBuilder: (context, error, child) =>
+                                  _buildCameraError(error),
                             ),
                             _buildScanOverlay(),
                             if (_loading)
@@ -433,12 +471,20 @@ class _ScannerScreenState extends State<ScannerScreen>
                         _buildControlBtn(
                           icon: Icons.flash_on,
                           label: "Flash",
-                          onTap: () => cameraController.toggleTorch(),
+                          onTap: () async {
+                            try {
+                              await cameraController.toggleTorch();
+                            } catch (_) {}
+                          },
                         ),
                         _buildControlBtn(
                           icon: Icons.flip_camera_ios,
                           label: "Flip",
-                          onTap: () => cameraController.switchCamera(),
+                          onTap: () async {
+                            try {
+                              await cameraController.switchCamera();
+                            } catch (_) {}
+                          },
                         ),
                         _buildControlBtn(
                           icon: Icons.wifi,
@@ -572,6 +618,41 @@ class _ScannerScreenState extends State<ScannerScreen>
     );
   }
 
+  // Shows the real camera error instead of a silent black box
+  Widget _buildCameraError(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.videocam_off, size: 56, color: Colors.white30),
+            const SizedBox(height: 12),
+            const Text(
+              "Camera failed to start",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _safeStart,
+              child: const Text("Retry"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPermissionDenied() {
     return Center(
       child: Column(
@@ -607,6 +688,7 @@ class _ScannerScreenState extends State<ScannerScreen>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
             ),
             child: const Text("Open Settings"),
           ),
