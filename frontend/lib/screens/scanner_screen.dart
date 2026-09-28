@@ -15,27 +15,36 @@ class ScannerScreen extends StatefulWidget {
 
 class _ScannerScreenState extends State<ScannerScreen>
     with WidgetsBindingObserver {
-
   // Controllers
-  MobileScannerController cameraController =
-      MobileScannerController();
+  MobileScannerController cameraController = MobileScannerController();
   final _contextCtrl = TextEditingController();
 
   // State
-  bool _loading        = false;
-  bool _cameraActive   = true;
-  bool _hasPermission  = false;
-  bool _scanned        = false;
+  bool _loading = false;
+  bool _cameraActive = true;
+  bool _hasPermission = false;
+  bool _scanned = false;
   String _backendStatus = "Checking...";
-  Color _statusColor    = Colors.grey;
+  Color _statusColor = Colors.grey;
 
-  // API URLs - Change IP if testing on real phone
-  // Use your computer's IP address instead of localhost
-  // Example: "http://192.168.1.5:8000/api/scan"
-  static const String apiUrl =
-      "http://10.20.5.7:8000/api/scan";
-  static const String healthUrl =
-      "http://10.20.5.7:8000/api/health";
+  // API URL
+  //
+  // Option A: edit the default value below.
+  // Option B: run Flutter with:
+  // flutter run --dart-define=BACKEND_URL=http://YOUR_LAN_IP:8000
+  //
+  // For Android emulator only, you may use:
+  // http://10.0.2.2:8000
+  //
+  // For a real phone, use your laptop LAN IP, example:
+  // http://192.168.1.20:8000
+  static const String backendBaseUrl = String.fromEnvironment(
+    'BACKEND_URL',
+    defaultValue: 'http://192.168.1.20:8000',
+  );
+
+  static String get apiUrl => '$backendBaseUrl/api/scan';
+  static String get healthUrl => '$backendBaseUrl/api/health';
 
   @override
   void initState() {
@@ -68,6 +77,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     setState(() {
       _hasPermission = status.isGranted;
     });
+
     if (!status.isGranted) {
       _showMessage(
         "Camera permission needed to scan QR codes",
@@ -82,10 +92,11 @@ class _ScannerScreenState extends State<ScannerScreen>
       final res = await http
           .get(Uri.parse(healthUrl))
           .timeout(const Duration(seconds: 5));
+
       if (res.statusCode == 200) {
         setState(() {
           _backendStatus = "✅ Online";
-          _statusColor   = const Color(0xFF22C55E);
+          _statusColor = const Color(0xFF22C55E);
         });
       } else {
         throw Exception();
@@ -93,33 +104,29 @@ class _ScannerScreenState extends State<ScannerScreen>
     } catch (e) {
       setState(() {
         _backendStatus = "❌ Offline";
-        _statusColor   = const Color(0xFFEF4444);
+        _statusColor = const Color(0xFFEF4444);
       });
     }
   }
 
   // Called when QR code is detected by camera
   void _onQRDetected(BarcodeCapture capture) async {
-    // Prevent multiple scans
     if (_scanned || _loading) return;
 
     final barcode = capture.barcodes.first;
-    final qrData  = barcode.rawValue;
+    final qrData = barcode.rawValue;
 
     if (qrData == null || qrData.isEmpty) return;
 
-    // Vibrate to confirm scan
     HapticFeedback.heavyImpact();
 
     setState(() {
-      _scanned     = true;
+      _scanned = true;
       _cameraActive = false;
     });
 
-    // Stop camera
     await cameraController.stop();
 
-    // Show detected QR data
     _showQRConfirmDialog(qrData);
   }
 
@@ -224,20 +231,17 @@ class _ScannerScreenState extends State<ScannerScreen>
             headers: {"Content-Type": "application/json"},
             body: jsonEncode({
               "qr_decoded_text": payload,
-              "context_text":
-                  contextText.isEmpty ? null : contextText,
+              "context_text": contextText.isEmpty ? null : contextText,
               "scan_source": "flutter_mobile_camera",
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 45));
 
       if (res.statusCode == 200) {
-        final data =
-            jsonDecode(res.body) as Map<String, dynamic>;
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
 
         if (!mounted) return;
 
-        // Navigate to results
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -245,7 +249,6 @@ class _ScannerScreenState extends State<ScannerScreen>
           ),
         );
 
-        // Reset scanner after coming back
         _resetScanner();
       } else {
         _showMessage(
@@ -269,15 +272,20 @@ class _ScannerScreenState extends State<ScannerScreen>
   // Reset scanner to scan again
   void _resetScanner() {
     setState(() {
-      _scanned      = false;
+      _scanned = false;
       _cameraActive = true;
     });
+
     _contextCtrl.clear();
-    cameraController.start();
+
+    if (_hasPermission) {
+      cameraController.start();
+    }
   }
 
   void _showMessage(String msg, {bool isError = false}) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -296,16 +304,14 @@ class _ScannerScreenState extends State<ScannerScreen>
       body: SafeArea(
         child: Column(
           children: [
-
-            // ── Header ────────────────────────────────
+            // Header
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 16,
               ),
               child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     "🛡️ QuishGuard AI",
@@ -315,7 +321,6 @@ class _ScannerScreenState extends State<ScannerScreen>
                       color: Colors.white,
                     ),
                   ),
-                  // Backend status badge
                   GestureDetector(
                     onTap: _checkBackend,
                     child: Container(
@@ -344,7 +349,7 @@ class _ScannerScreenState extends State<ScannerScreen>
               ),
             ),
 
-            // ── Camera Viewfinder ─────────────────────
+            // Camera Viewfinder
             Expanded(
               flex: 5,
               child: Container(
@@ -363,27 +368,20 @@ class _ScannerScreenState extends State<ScannerScreen>
                   child: _hasPermission
                       ? Stack(
                           children: [
-                            // Camera
                             MobileScanner(
                               controller: cameraController,
                               onDetect: _onQRDetected,
                             ),
-
-                            // Scanning overlay
                             _buildScanOverlay(),
-
-                            // Loading overlay
                             if (_loading)
                               Container(
                                 color: Colors.black54,
                                 child: const Center(
                                   child: Column(
-                                    mainAxisSize:
-                                        MainAxisSize.min,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       CircularProgressIndicator(
-                                        color:
-                                            Color(0xFF6366F1),
+                                        color: Color(0xFF6366F1),
                                       ),
                                       SizedBox(height: 16),
                                       Text(
@@ -404,14 +402,13 @@ class _ScannerScreenState extends State<ScannerScreen>
               ),
             ),
 
-            // ── Bottom Panel ──────────────────────────
+            // Bottom Panel
             Expanded(
               flex: 2,
               child: Container(
                 padding: const EdgeInsets.all(20),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Text(
                       "Point camera at a QR code",
@@ -430,50 +427,36 @@ class _ScannerScreenState extends State<ScannerScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Camera Controls
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceEvenly,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-
-                        // Flash Toggle
                         _buildControlBtn(
                           icon: Icons.flash_on,
                           label: "Flash",
-                          onTap: () =>
-                              cameraController.toggleTorch(),
+                          onTap: () => cameraController.toggleTorch(),
                         ),
-
-                        // Flip Camera
                         _buildControlBtn(
                           icon: Icons.flip_camera_ios,
                           label: "Flip",
-                          onTap: () =>
-                              cameraController.switchCamera(),
+                          onTap: () => cameraController.switchCamera(),
                         ),
-
-                        // Refresh Backend
                         _buildControlBtn(
                           icon: Icons.wifi,
                           label: "Status",
                           onTap: _checkBackend,
                         ),
-
                       ],
                     ),
                   ],
                 ),
               ),
             ),
-
           ],
         ),
       ),
     );
   }
 
-  // Scanning crosshair overlay
   Widget _buildScanOverlay() {
     return Center(
       child: Container(
@@ -488,30 +471,25 @@ class _ScannerScreenState extends State<ScannerScreen>
         ),
         child: Stack(
           children: [
-            // Corner markers
             Positioned(
-              top: 0, left: 0,
-              child: _cornerMark(
-                topLeft: true,
-              ),
+              top: 0,
+              left: 0,
+              child: _cornerMark(topLeft: true),
             ),
             Positioned(
-              top: 0, right: 0,
-              child: _cornerMark(
-                topRight: true,
-              ),
+              top: 0,
+              right: 0,
+              child: _cornerMark(topRight: true),
             ),
             Positioned(
-              bottom: 0, left: 0,
-              child: _cornerMark(
-                bottomLeft: true,
-              ),
+              bottom: 0,
+              left: 0,
+              child: _cornerMark(bottomLeft: true),
             ),
             Positioned(
-              bottom: 0, right: 0,
-              child: _cornerMark(
-                bottomRight: true,
-              ),
+              bottom: 0,
+              right: 0,
+              child: _cornerMark(bottomRight: true),
             ),
           ],
         ),
@@ -520,9 +498,9 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Widget _cornerMark({
-    bool topLeft    = false,
-    bool topRight   = false,
-    bool bottomLeft  = false,
+    bool topLeft = false,
+    bool topRight = false,
+    bool bottomLeft = false,
     bool bottomRight = false,
   }) {
     return Container(
