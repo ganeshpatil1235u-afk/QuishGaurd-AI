@@ -1,9 +1,157 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class ResultsScreen extends StatelessWidget {
+class ResultsScreen extends StatefulWidget {
   final Map<String, dynamic> result;
 
-  ResultsScreen({Key? key, required this.result}) : super(key: key);
+  const ResultsScreen({Key? key, required this.result}) : super(key: key);
+
+  @override
+  State<ResultsScreen> createState() => _ResultsScreenState();
+}
+
+class _ResultsScreenState extends State<ResultsScreen> {
+  Map<String, dynamic> get result => widget.result;
+
+  static const int _autoRedirectSeconds = 3;
+  Timer? _timer;
+  int _countdown = _autoRedirectSeconds;
+  bool _autoRedirectActive = false;
+
+  String get _payload => (result["decoded_payload"] ?? "").toString();
+  String get _level => (result["risk_level"] ?? "UNKNOWN").toString();
+  bool get _isUpi => (result["payload_type"] ?? "") == "UPI";
+
+  // Only hand off to PhonePe when the backend says SAFE (never for MEDIUM+)
+  bool get _canRedirect =>
+      _isUpi && _level == "SAFE" && result["redirect_to_phonepe"] == true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_canRedirect) {
+      _autoRedirectActive = true;
+      _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted) return;
+        if (_countdown <= 1) {
+          t.cancel();
+          setState(() => _autoRedirectActive = false);
+          _openPhonePe();
+        } else {
+          setState(() => _countdown--);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _cancelAutoRedirect() {
+    _timer?.cancel();
+    setState(() => _autoRedirectActive = false);
+  }
+
+  // Opens PhonePe with the scanned UPI payment request.
+  // 1) phonepe://pay?...  targets PhonePe directly
+  // 2) upi://pay?...      Android app chooser fallback
+  Future<void> _openPhonePe() async {
+    final query = Uri.tryParse(_payload)?.query ?? "";
+    if (query.isEmpty) {
+      _toast("Invalid UPI payload");
+      return;
+    }
+
+    final attempts = <Uri>[
+      Uri.parse("phonepe://pay?$query"),
+      Uri.parse("upi://pay?$query"),
+    ];
+
+    for (final uri in attempts) {
+      try {
+        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (ok) return;
+      } catch (_) {
+        // try next
+      }
+    }
+    _toast("Could not open PhonePe. Is it installed?");
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFFEF4444)),
+    );
+  }
+
+  Widget _phonePeSection(Color color) {
+    const phonePePurple = Color(0xFF5F259F);
+
+    if (_canRedirect) {
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _openPhonePe,
+              icon: const Icon(Icons.open_in_new),
+              label: Text(
+                _autoRedirectActive
+                    ? "Opening PhonePe in $_countdown..."
+                    : "Pay with PhonePe",
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: phonePePurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          if (_autoRedirectActive)
+            TextButton(
+              onPressed: _cancelAutoRedirect,
+              child: const Text("Cancel",
+                  style: TextStyle(color: Colors.white54)),
+            ),
+          const SizedBox(height: 8),
+        ],
+      );
+    }
+
+    // MEDIUM: allow an explicit, deliberate override. HIGH/CRITICAL: blocked.
+    if (_isUpi && _level == "MEDIUM") {
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _openPhonePe,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: color,
+                side: BorderSide(color: color),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text("Proceed to PhonePe anyway (at your risk)"),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
+  }
 
   Color _riskColor(String level) {
     switch (level) {
@@ -121,6 +269,7 @@ class ResultsScreen extends StatelessWidget {
               _card(
                 "💳 UPI Analysis",
                 "VPA: ${upi["payee_vpa"] ?? "Unknown"}\n"
+                "Payee: ${upi["payee_name"] ?? "Unknown"}\n"
                 "Amount: Rs.${upi["amount"] ?? 0}\n"
                 "Action: ${upi["actual_action"] ?? "DEBIT"}\n"
                 "Risk Score: ${upi["upi_risk_score"] ?? 0}/100",
@@ -174,6 +323,9 @@ class ResultsScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
+            // PhonePe redirect (SAFE only) / override (MEDIUM only)
+            _phonePeSection(color),
+
             // Scan Again Button
             SizedBox(
               width: double.infinity,
@@ -181,6 +333,7 @@ class ResultsScreen extends StatelessWidget {
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
