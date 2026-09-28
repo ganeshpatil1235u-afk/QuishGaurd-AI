@@ -4,9 +4,53 @@ import re
 
 
 class UPIIntentEngine:
-    KNOWN_SCAM_PATTERNS = [
-        r"^test\d*@", r"^temp\d*@", r"^scam", r"^fraud", r"^fake",
-        r"^[a-z]{18,}@", r"^\d{10,}@",
+    # Well-formed VPA: <local-part>@<handle>
+    VPA_REGEX = re.compile(r"^[a-z0-9][a-z0-9._\-]{1,255}@[a-z][a-z0-9]{1,63}$")
+
+    # Registered UPI handles (PSP / bank suffixes) -> app/bank family.
+    # Phone-number VPAs on these handles (e.g. 9876543210@ibl) are NORMAL in India.
+    KNOWN_HANDLES = {
+        # PhonePe
+        "ybl": "PhonePe", "ibl": "PhonePe", "axl": "PhonePe",
+        # Google Pay
+        "okhdfcbank": "Google Pay", "okicici": "Google Pay",
+        "okaxis": "Google Pay", "oksbi": "Google Pay",
+        # Paytm
+        "paytm": "Paytm", "ptyes": "Paytm", "pthdfc": "Paytm",
+        "ptsbi": "Paytm", "ptaxis": "Paytm",
+        # Amazon Pay / WhatsApp / others
+        "apl": "Amazon Pay", "yapl": "Amazon Pay",
+        "waaxis": "WhatsApp Pay", "wahdfcbank": "WhatsApp Pay",
+        "wasbi": "WhatsApp Pay", "waicici": "WhatsApp Pay",
+        "freecharge": "Freecharge", "jupiter": "Jupiter", "fbl": "Federal Bank",
+        # Banks
+        "sbi": "SBI", "hdfcbank": "HDFC Bank", "icici": "ICICI Bank",
+        "axisbank": "Axis Bank", "axisb": "Axis Bank", "kotak": "Kotak",
+        "yesbank": "Yes Bank", "indus": "IndusInd", "pnb": "PNB",
+        "boi": "Bank of India", "cnrb": "Canara Bank", "okbizaxis": "Google Pay",
+        "unionbank": "Union Bank", "uboi": "Union Bank", "ubi": "Union Bank",
+        "idfcbank": "IDFC First", "idfcfirst": "IDFC First", "rbl": "RBL",
+        "aubank": "AU Bank", "federal": "Federal Bank", "upi": "NPCI",
+        "airtel": "Airtel Payments", "postbank": "India Post",
+        "barodampay": "Bank of Baroda", "allbank": "Indian Bank",
+        "idbi": "IDBI", "iob": "IOB", "kvb": "Karur Vysya", "sib": "South Indian Bank",
+        "dbs": "DBS", "hsbc": "HSBC", "bandhan": "Bandhan", "csbpay": "CSB",
+        "dcb": "DCB", "jsb": "Janata Sahakari", "mahb": "Bank of Maharashtra",
+        "uco": "UCO Bank", "cbin": "Central Bank", "andb": "Andhra Bank",
+        "ikwik": "MobiKwik", "abfspay": "Aditya Birla", "cmsidfc": "IDFC First",
+    }
+
+    # Local-part patterns that are genuinely suspicious
+    SUSPICIOUS_LOCAL_PATTERNS = [
+        r"^test\d*$", r"^temp\d*$", r"^scam", r"^fraud", r"^fake",
+        r"^[a-z]{22,}$",          # long random letter strings
+        r"^\d{13,}$",             # 13+ digits is not a phone number
+    ]
+
+    # Social-engineering words in payee name / VPA
+    LURE_WORDS = [
+        "refund", "cashback", "reward", "lottery", "prize", "kyc",
+        "helpline", "customer care", "customercare", "support", "winner",
     ]
 
     RECEIVE_WORDS = [
@@ -20,8 +64,8 @@ class UPIIntentEngine:
 
         parsed = urlparse(upi_string.strip())
         params = parse_qs(parsed.query)
-        payee_vpa = params.get("pa", [None])[0]
-        payee_name = params.get("pn", ["Unknown"])[0]
+        payee_vpa = (params.get("pa", [None])[0] or "").strip()
+        payee_name = (params.get("pn", [""])[0] or "").strip()
         note = params.get("tn", [""])[0]
         try:
             amount = float(params.get("am", ["0"])[0] or 0)
@@ -30,8 +74,13 @@ class UPIIntentEngine:
 
         risks = []
         risk_score = 0
+        vpa_lower = payee_vpa.lower()
+        local, _, handle = vpa_lower.partition("@")
+        vpa_valid = bool(self.VPA_REGEX.match(vpa_lower))
+        known_psp = self.KNOWN_HANDLES.get(handle)
+        is_phone_vpa = bool(re.fullmatch(r"[6-9]\d{9}", local))
 
-        # KILLER FEATURE: sign says RECEIVE, QR actually takes money
+        # 1. Sign says RECEIVE but QR is a payment intent (classic QR fraud)
         if context_text:
             ctx = context_text.lower()
             if any(w in ctx for w in self.RECEIVE_WORDS):
@@ -44,18 +93,16 @@ class UPIIntentEngine:
                     })
                     risk_score += 55
                 else:
-                    # FIX: catch no-amount scams — any "receive" sign attached
-                    # to a payment intent is the classic QR fraud pattern
                     risks.append({
                         "severity": "CRITICAL",
                         "type": "PAY_VS_RECEIVE_MISMATCH",
                         "detail": ("Sign promises you'll RECEIVE money, but this QR "
-                                   "opens a PAYMENT screen. You will be asked to "
-                                   "ENTER YOUR PIN — that approves money LEAVING "
-                                   "your account."),
+                                   "opens a PAYMENT screen. Entering your PIN approves "
+                                   "money LEAVING your account."),
                     })
                     risk_score += 50
 
+        # 2. Amount
         if amount >= 10000:
             risks.append({"severity": "HIGH", "type": "VERY_HIGH_AMOUNT",
                           "detail": f"QR requests debit of Rs.{amount:,.2f}"})
@@ -65,17 +112,40 @@ class UPIIntentEngine:
                           "detail": f"QR requests debit of Rs.{amount:,.2f}"})
             risk_score += 12
 
-        if payee_vpa:
-            for pat in self.KNOWN_SCAM_PATTERNS:
-                if re.search(pat, payee_vpa.lower()):
+        # 3. VPA structure / handle
+        if not payee_vpa:
+            risks.append({"severity": "HIGH", "type": "MISSING_VPA",
+                          "detail": "QR has no payee UPI ID (pa)"})
+            risk_score += 40
+        elif not vpa_valid:
+            risks.append({"severity": "HIGH", "type": "MALFORMED_VPA",
+                          "detail": f"'{payee_vpa}' is not a valid UPI ID format"})
+            risk_score += 40
+        elif known_psp is None:
+            risks.append({"severity": "MEDIUM", "type": "UNKNOWN_HANDLE",
+                          "detail": f"Handle '@{handle}' is not a recognised UPI provider"})
+            risk_score += 25
+
+        # 4. Genuinely suspicious local parts (phone numbers are NOT flagged)
+        if vpa_valid and not is_phone_vpa:
+            for pat in self.SUSPICIOUS_LOCAL_PATTERNS:
+                if re.search(pat, local):
                     risks.append({
-                        "severity": "CRITICAL", "type": "SUSPICIOUS_VPA",
-                        "detail": f"VPA '{payee_vpa}' matches known scam patterns",
+                        "severity": "HIGH", "type": "SUSPICIOUS_VPA",
+                        "detail": f"UPI ID '{payee_vpa}' looks auto-generated or fake",
                     })
                     risk_score += 30
                     break
 
-        if not payee_name or payee_name.lower() in ["merchant", "user", "account", "unknown", ""]:
+        # 5. Lure words in payee name / VPA
+        haystack = f"{payee_name} {vpa_lower}".lower()
+        if any(w in haystack for w in self.LURE_WORDS):
+            risks.append({"severity": "MEDIUM", "type": "LURE_KEYWORD",
+                          "detail": "Payee name/UPI ID contains refund/reward/support style wording"})
+            risk_score += 20
+
+        # 6. Missing / generic name
+        if not payee_name or payee_name.lower() in ["merchant", "user", "account", "unknown"]:
             risks.append({"severity": "LOW", "type": "GENERIC_PAYEE_NAME",
                           "detail": "Payee name is missing or generic"})
             risk_score += 5
@@ -83,10 +153,14 @@ class UPIIntentEngine:
         return {
             "is_upi": True,
             "payee_vpa": payee_vpa,
-            "payee_name": payee_name,
+            "payee_name": payee_name or "Unknown",
             "amount": amount,
             "transaction_note": note,
             "actual_action": "DEBIT",
+            "vpa_valid": vpa_valid,
+            "vpa_handle": handle or None,
+            "known_psp": known_psp,
+            "is_phone_number_vpa": is_phone_vpa,
             "risks": risks,
             "upi_risk_score": min(risk_score, 100),
         }
