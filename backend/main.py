@@ -11,7 +11,9 @@ from services.hf_service import hf_engine
 from services.upi_service import upi_engine
 from services.threat_api_service import threat_api_service
 
-app = FastAPI(title="QuishGuard AI", version="2.0.1")
+ENGINE_VERSION = "2.1.0"
+
+app = FastAPI(title="QuishGuard AI", version=ENGINE_VERSION)
 
 # FIX: "*" with allow_credentials=True is rejected by browsers -> credentials=False
 app.add_middleware(
@@ -37,17 +39,21 @@ def root():
     return {"service": "QuishGuard AI", "health": "/api/health", "docs": "/docs"}
 
 
+# NOTE: the Flutter app now calls the /api/v2/* routes. An OLD backend does not
+# have them, so the app will show "old backend" instead of silently using old logic.
 @app.get("/api/health")
+@app.get("/api/v2/health")
 def health():
     return {
         "status": "healthy",
         "service": "QuishGuard AI",
         "stack": ["FastAPI", "OpenCV", "HuggingFace", "VirusTotal", "WHOIS"],
-        "version": "2.0.1",
+        "version": ENGINE_VERSION,
     }
 
 
 @app.post("/api/scan")
+@app.post("/api/v2/scan")
 def scan(request: ScanRequest):
     # FIX: plain `def` (NOT async) — FastAPI runs sync endpoints in a
     # threadpool, so slow WHOIS/VirusTotal calls don't freeze the server.
@@ -123,7 +129,11 @@ def scan(request: ScanRequest):
         verdict = (f"✅ SAFE. Payee: {who} ({upi_res.get('payee_vpa')})"
                    + (f" on {via}." if via else "."))
 
+    print(f"[SCAN] type={'UPI' if is_upi else 'OTHER'} score={score} "
+          f"risk={risk} payload={decoded_text[:80]}")
+
     return {
+        "engine_version": ENGINE_VERSION,
         "scan_id": str(uuid.uuid4()),
         "threat_score": score,
         "risk_level": risk,
@@ -150,4 +160,6 @@ def scan(request: ScanRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    print(f"[QuishGuard] main.py v{ENGINE_VERSION} loaded from: {__file__}")
+    # reload=False so no background reloader process can keep serving old code
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
