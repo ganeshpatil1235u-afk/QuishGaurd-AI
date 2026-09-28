@@ -167,3 +167,4 @@ class UPIIntentEngine:
 
 
 upi_engine = UPIIntentEngine()
+print(f"[QuishGuard] NEW UPI engine loaded from: {__file__}")
