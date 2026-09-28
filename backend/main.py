@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from services.vision_service import vision_engine
@@ -11,15 +11,19 @@ from services.hf_service import hf_engine
 from services.upi_service import upi_engine
 from services.threat_api_service import threat_api_service
 
-app = FastAPI(title="QuishGuard AI", version="2.0.0")
+app = FastAPI(title="QuishGuard AI", version="2.0.1")
 
+# FIX: "*" with allow_credentials=True is rejected by browsers -> credentials=False
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+MAX_B64_CHARS = 6_000_000  # FIX: ~4.5MB cap, unbounded base64 = crash
+
 
 class ScanRequest(BaseModel):
     qr_image_base64: Optional[str] = None
@@ -27,134 +31,87 @@ class ScanRequest(BaseModel):
     context_text: Optional[str] = None
     scan_source: str = "unknown"
 
+
 @app.get("/")
 def root():
-    return {
-        "service": "QuishGuard AI",
-        "health": "/api/health",
-        "docs": "/docs"
-    }
+    return {"service": "QuishGuard AI", "health": "/api/health", "docs": "/docs"}
+
 
 @app.get("/api/health")
 def health():
     return {
         "status": "healthy",
         "service": "QuishGuard AI",
-        "stack": [
-            "FastAPI",
-            "OpenCV",
-            "HuggingFace",
-            "VirusTotal",
-            "WHOIS"
-        ],
-        "version": "2.0.0",
+        "stack": ["FastAPI", "OpenCV", "HuggingFace", "VirusTotal", "WHOIS"],
+        "version": "2.0.1",
     }
 
+
 @app.post("/api/scan")
-async def scan(request: ScanRequest):
+def scan(request: ScanRequest):
+    # FIX: plain `def` (NOT async) — FastAPI runs sync endpoints in a
+    # threadpool, so slow WHOIS/VirusTotal calls don't freeze the server.
+    if request.qr_image_base64 and len(request.qr_image_base64) > MAX_B64_CHARS:
+        raise HTTPException(status_code=413, detail="Image too large (max ~4MB)")
+
     decoded_text = request.qr_decoded_text
     vision_meta = None
 
-    # Step 1: OpenCV decode if image provided
     if not decoded_text and request.qr_image_base64:
         v = vision_engine.preprocess_and_decode(request.qr_image_base64)
         if not v.get("success"):
-            raise HTTPException(
-                status_code=400,
-                detail=v.get("error", "QR decode failed")
-            )
+            raise HTTPException(status_code=400, detail=v.get("error", "QR decode failed"))
         decoded_text = v["decoded_text"]
         vision_meta = v
 
     if not decoded_text or not str(decoded_text).strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Provide qr_decoded_text or qr_image_base64"
-        )
+        raise HTTPException(status_code=400, detail="Provide qr_decoded_text or qr_image_base64")
 
     decoded_text = str(decoded_text).strip()
-    is_upi = decoded_text.lower().startswith("upi://")
-    is_url = decoded_text.lower().startswith(("http://", "https://")) or (
-        "." in decoded_text
-        and " " not in decoded_text
-        and not is_upi
+    lower = decoded_text.lower()
+    is_upi = lower.startswith("upi://")
+    is_url = lower.startswith(("http://", "https://")) or (
+        "." in decoded_text and " " not in decoded_text and not is_upi
     )
 
     url_for_intel = decoded_text
-    if is_url and not decoded_text.lower().startswith("http"):
+    if is_url and not lower.startswith("http"):
         url_for_intel = "https://" + decoded_text
 
-    # Step 2: Run all engines
-    upi_res = (
-        upi_engine.analyze_upi_payload(
-            decoded_text, request.context_text
-        )
-        if is_upi
-        else {"is_upi": False}
-    )
-    hf_res = (
-        hf_engine.predict_url_threat(url_for_intel)
-        if is_url
-        else {
-            "phishing_probability": 0.0,
-            "is_phishing": False,
-            "model": "skipped"
-        }
-    )
-    vt_res = (
-        threat_api_service.check_virustotal(url_for_intel)
-        if is_url
-        else {
-            "threat_score": 0.0,
-            "flagged": False,
-            "service": "skipped"
-        }
-    )
-    whois_res = (
-        threat_api_service.check_whois(url_for_intel)
-        if is_url
-        else {
-            "risk_score": 0.0,
-            "age_days": None,
-            "is_zero_day": False
-        }
-    )
+    upi_res = (upi_engine.analyze_upi_payload(decoded_text, request.context_text)
+               if is_upi else {"is_upi": False})
+    hf_res = (hf_engine.predict_url_threat(url_for_intel)
+              if is_url else {"phishing_probability": 0.0, "is_phishing": False, "model": "skipped"})
+    vt_res = (threat_api_service.check_virustotal(url_for_intel)
+              if is_url else {"threat_score": 0.0, "flagged": False, "service": "skipped"})
+    whois_res = (threat_api_service.check_whois(url_for_intel)
+                 if is_url else {"risk_score": 0.0, "age_days": None, "is_zero_day": False})
 
-    # Step 3: Composite score
+    # FIX: normalize HF probability to 0-100 FIRST, then weight (old code
+    # mixed a 0-1 value *40 with 0-100 values *0.35 — confusing & fragile)
+    hf_pct = float(hf_res.get("phishing_probability", 0)) * 100.0
+
     if is_upi and not is_url:
         score = float(upi_res.get("upi_risk_score", 0))
     elif is_url and not is_upi:
-        score = (
-            float(hf_res.get("phishing_probability", 0)) * 40.0
-            + float(whois_res.get("risk_score", 0)) * 0.35
-            + float(vt_res.get("threat_score", 0)) * 0.25
-        )
+        score = hf_pct * 0.45 + float(whois_res.get("risk_score", 0)) * 0.30 \
+              + float(vt_res.get("threat_score", 0)) * 0.25
     else:
-        score = max(
-            float(upi_res.get("upi_risk_score", 0)),
-            float(hf_res.get("phishing_probability", 0)) * 50.0,
-        )
+        score = max(float(upi_res.get("upi_risk_score", 0)), hf_pct * 0.50)
 
     score = round(min(max(score, 0.0), 100.0), 1)
 
     if score >= 75:
-        risk = "CRITICAL"
-        verdict = "🚨 CRITICAL THREAT. Do NOT proceed."
+        risk, verdict = "CRITICAL", "🚨 CRITICAL THREAT. Do NOT proceed."
     elif score >= 45:
-        risk = "HIGH"
-        verdict = "⚠️ HIGH RISK. Suspicious signals detected."
+        risk, verdict = "HIGH", "⚠️ HIGH RISK. Suspicious signals detected."
     elif score >= 20:
-        risk = "MEDIUM"
-        verdict = "⚡ MEDIUM RISK. Verify source before continuing."
+        risk, verdict = "MEDIUM", "⚡ MEDIUM RISK. Verify source before continuing."
     else:
-        risk = "SAFE"
-        verdict = "✅ SAFE. No strong malicious indicators."
+        risk, verdict = "SAFE", "✅ SAFE. No strong malicious indicators."
 
     if is_upi and upi_res.get("risks"):
-        crit = [
-            r for r in upi_res["risks"]
-            if r.get("severity") == "CRITICAL"
-        ]
+        crit = [r for r in upi_res["risks"] if r.get("severity") == "CRITICAL"]
         if crit:
             verdict = "🚨 " + crit[0]["detail"]
 
@@ -163,15 +120,11 @@ async def scan(request: ScanRequest):
         "threat_score": score,
         "risk_level": risk,
         "decoded_payload": decoded_text,
-        "payload_type": (
-            "UPI" if is_upi else ("URL" if is_url else "TEXT")
-        ),
+        "payload_type": "UPI" if is_upi else ("URL" if is_url else "TEXT"),
         "verdict": verdict,
-        "recommendation": (
-            "DO NOT PROCEED. Report this QR."
-            if risk in ("CRITICAL", "HIGH")
-            else "Proceed with normal caution."
-        ),
+        "recommendation": ("DO NOT PROCEED. Report this QR."
+                           if risk in ("CRITICAL", "HIGH")
+                           else "Proceed with normal caution."),
         "analysis": {
             "opencv_vision": vision_meta,
             "upi_analysis": upi_res,
@@ -179,9 +132,10 @@ async def scan(request: ScanRequest):
             "virustotal_api": vt_res,
             "whois_api": whois_res,
         },
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),  # FIX: utcnow() deprecated
         "scan_source": request.scan_source,
     }
+
 
 if __name__ == "__main__":
     import uvicorn
