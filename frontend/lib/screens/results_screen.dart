@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,9 +18,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
   Map<String, dynamic> get result => widget.result;
 
   static const int _autoRedirectSeconds = 3;
+  static const String _phonePePackage = "com.phonepe.app";
+
   Timer? _timer;
   int _countdown = _autoRedirectSeconds;
   bool _autoRedirectActive = false;
+  bool _launching = false;
 
   String get _payload => (result["decoded_payload"] ?? "").toString();
   String get _level => (result["risk_level"] ?? "UNKNOWN").toString();
@@ -56,36 +62,85 @@ class _ResultsScreenState extends State<ResultsScreen> {
     setState(() => _autoRedirectActive = false);
   }
 
-  // Opens PhonePe with the scanned UPI payment request.
-  // 1) phonepe://pay?...  targets PhonePe directly
-  // 2) upi://pay?...      Android app chooser fallback
+  /// Opens PhonePe with the scanned UPI payment request.
+  ///  1) Android intent aimed straight at com.phonepe.app  (most reliable)
+  ///  2) upi:// link -> Android app chooser                (fallback)
+  ///  3) phonepe:// deep link                              (last resort)
+  /// If everything fails, the exact reason is shown on screen.
   Future<void> _openPhonePe() async {
-    final query = Uri.tryParse(_payload)?.query ?? "";
-    if (query.isEmpty) {
-      _toast("Invalid UPI payload");
+    if (_launching) return;
+    _launching = true;
+
+    final errors = <String>[];
+    final payload = _payload.trim();
+
+    if (!payload.toLowerCase().startsWith("upi://")) {
+      _toast("Not a UPI payment QR");
+      _launching = false;
       return;
     }
 
-    final attempts = <Uri>[
-      Uri.parse("phonepe://pay?$query"),
-      Uri.parse("upi://pay?$query"),
-    ];
-
-    for (final uri in attempts) {
-      try {
-        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (ok) return;
-      } catch (_) {
-        // try next
+    try {
+      // 1) Direct intent to the PhonePe app
+      if (Platform.isAndroid) {
+        try {
+          final intent = AndroidIntent(
+            action: 'action_view',
+            data: payload,
+            package: _phonePePackage,
+            flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+          );
+          await intent.launch();
+          return;
+        } catch (e) {
+          errors.add("PhonePe intent: $e");
+        }
       }
+
+      // 2) Generic upi:// (lets the user pick a UPI app)
+      try {
+        final ok = await launchUrl(
+          Uri.parse(payload),
+          mode: LaunchMode.externalApplication,
+        );
+        if (ok) return;
+        errors.add("upi:// returned false");
+      } catch (e) {
+        errors.add("upi://: $e");
+      }
+
+      // 3) phonepe:// deep link
+      try {
+        final query = Uri.tryParse(payload)?.query ?? "";
+        final ok = await launchUrl(
+          Uri.parse("phonepe://pay?$query"),
+          mode: LaunchMode.externalApplication,
+        );
+        if (ok) return;
+        errors.add("phonepe:// returned false");
+      } catch (e) {
+        errors.add("phonepe://: $e");
+      }
+
+      _toast(
+        "Could not open PhonePe.\n"
+        "Is PhonePe installed?\n\n"
+        "${errors.join('\n')}",
+        seconds: 12,
+      );
+    } finally {
+      _launching = false;
     }
-    _toast("Could not open PhonePe. Is it installed?");
   }
 
-  void _toast(String msg) {
+  void _toast(String msg, {int seconds = 4}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: const Color(0xFFEF4444)),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: const Color(0xFFEF4444),
+        duration: Duration(seconds: seconds),
+      ),
     );
   }
 
@@ -257,6 +312,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ),
             const SizedBox(height: 16),
 
+            // PhonePe button first, so it is visible without scrolling
+            _phonePeSection(color),
+
             _card("Verdict", verdict, borderColor: color, textColor: color),
             const SizedBox(height: 8),
             _card("Recommendation", recommendation),
@@ -321,24 +379,13 @@ class _ResultsScreenState extends State<ResultsScreen> {
               const SizedBox(height: 8),
             ],
 
-            const SizedBox(height: 16),
-
             _card(
               "🔧 Debug",
-              result["engine_version"] != null
-                  ? "Backend engine: ${result["engine_version"]}"
-                  : "⚠️ OLD BACKEND: this phone is NOT using your updated code",
-              borderColor: result["engine_version"] != null
-                  ? null
-                  : const Color(0xFFEF4444),
-              textColor: result["engine_version"] != null
-                  ? null
-                  : const Color(0xFFEF4444),
+              "Backend engine: ${result["engine_version"] ?? "OLD BACKEND"}\n"
+              "Risk level: $level\n"
+              "redirect_to_phonepe: ${result["redirect_to_phonepe"]}",
             ),
             const SizedBox(height: 12),
-
-            // PhonePe redirect (SAFE only) / override (MEDIUM only)
-            _phonePeSection(color),
 
             // Scan Again Button
             SizedBox(
