@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'results_screen.dart';
+import 'home_screen.dart';
 
 class ScannerScreen extends StatefulWidget {
   ScannerScreen({Key? key}) : super(key: key);
@@ -283,14 +284,19 @@ class _ScannerScreenState extends State<ScannerScreen>
 
         if (!mounted) return;
 
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ResultsScreen(result: data),
-          ),
-        );
+        // Record scan stats
+final level = (data["risk_level"] ?? "").toString();
+final isThreat = level == "HIGH" || level == "CRITICAL" || level == "MEDIUM";
+ScanStats.recordScan(isThreat: isThreat);
 
-        _resetScanner();
+await Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => ResultsScreen(result: data),
+  ),
+);
+
+_resetScanner();
       } else if (res.statusCode == 404) {
         _showMessage(
           "OLD backend detected (no /api/v2/scan).\n"

@@ -1,0 +1,39 @@
+Analyzing frontend...                                           
+
+   info - Parameter 'key' could be a super parameter - lib\main.dart:12:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\screens\home_screen.dart:8:9 - use_super_parameters
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:98:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:114:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:167:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:168:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:173:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:178:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:192:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:194:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:228:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:327:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:369:22 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:371:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:378:28 - deprecated_member_use
+warning - Unused import: 'package:android_intent_plus/flag.dart' - lib\screens\results_screen.dart:3:8 - unused_import
+   info - Parameter 'key' could be a super parameter - lib\screens\results_screen.dart:10:9 - use_super_parameters
+warning - The declaration '_level' isn't referenced - lib\screens\results_screen.dart:22:14 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\results_screen.dart:278:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\results_screen.dart:332:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\results_screen.dart:334:73 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\results_screen.dart:468:29 - deprecated_member_use
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\screens\scanner_screen.dart:10:3 - prefer_const_constructors_in_immutables
+   info - Parameter 'key' could be a super parameter - lib\screens\scanner_screen.dart:10:3 - use_super_parameters
+warning - The value of the field '_cameraActive' isn't used - lib\screens\scanner_screen.dart:29:8 - unused_field
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\scanner_screen.dart:381:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\scanner_screen.dart:384:47 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\scanner_screen.dart:503:21 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\scanner_screen.dart:674:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\splash_screen.dart:81:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\splash_screen.dart:83:62 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\splash_screen.dart:88:38 - deprecated_member_use
+   info - The imported package 'frontend' isn't a dependency of the importing package - test\widget_test.dart:11:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:frontend/main.dart' - test\widget_test.dart:11:8 - uri_does_not_exist
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+
+35 issues found. (ran in 2.1s)

@@ -1,40 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'screens/splash_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/scanner_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(QuishGuardApp());
+  runApp(const QuishGuardApp());
 }
 
 class QuishGuardApp extends StatelessWidget {
-  QuishGuardApp({Key? key}) : super(key: key);
+  const QuishGuardApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'QuishGuard AI',
+      theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        primaryColor: const Color(0xFF6366F1),
-        textTheme: GoogleFonts.interTextTheme(
-          ThemeData.dark().textTheme,
-        ),
-        // Fixes invisible button text (text colour was equal to button colour)
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6366F1),
-            foregroundColor: Colors.white,
-          ),
-        ),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF6366F1),
-          secondary: Color(0xFF22C55E),
-          error: Color(0xFFEF4444),
-        ),
-      ),
-      home: ScannerScreen(),
+      home: const SplashScreen(),
+      routes: {
+        '/home': (context) => const HomeScreen(),
+        '/scanner': (context) => ScannerScreen(),
+      },
     );
   }
 }
