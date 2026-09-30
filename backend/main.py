@@ -11,6 +11,7 @@ from services.hf_service import hf_engine
 from services.upi_service import upi_engine
 from services.threat_api_service import threat_api_service
 from services.redirect_service import follow_redirects
+from services.page_service import analyze_page                      # ← NEW
 from services.domain_utils import is_trusted, get_host
 import time, collections
 
@@ -141,6 +142,12 @@ def scan(request: ScanRequest, http_request: Request):
         redirect_res = follow_redirects(url_for_intel)
         url_for_intel = redirect_res["final_url"]      # judge the REAL destination
 
+    # Option 2: look inside the landing page (download only, no JS run). Can only ADD points.   # ← NEW
+    page_res = {"checked": False, "risk_points": 0.0, "signals": [], "reasons": [],            # ← NEW
+                "note": "skipped"}                                                             # ← NEW
+    if is_url and not is_upi:                                                                  # ← NEW
+        page_res = analyze_page(url_for_intel)                                                 # ← NEW
+
     upi_res = (upi_engine.analyze_upi_payload(decoded_text, request.context_text)
                if is_upi else {"is_upi": False})
     hf_res = (hf_engine.predict_url_threat(url_for_intel)
@@ -168,6 +175,7 @@ def scan(request: ScanRequest, http_request: Request):
         score = max(score, 50.0) + 10.0 * len(tamper)
     if redirect_res.get("hops", 0) >= 3:
         score += 10.0
+    score += max(0.0, float(page_res.get("risk_points", 0)))   # ← NEW  (never lowers the score)
     score = round(min(max(score, 0.0), 100.0), 1)
 
     if score >= 75:
@@ -218,10 +226,12 @@ def scan(request: ScanRequest, http_request: Request):
         "target_app": target_app,
         "auto_open_allowed": auto_open,
         "manual_open_allowed": manual_open,
-        "reasons": (hf_res.get("reasons", []) + [t["detail"] for t in tamper]),
+        "reasons": (hf_res.get("reasons", []) + [t["detail"] for t in tamper]
+                    + page_res.get("reasons", [])),                      # ← NEW
         "analysis": {
             "opencv_vision": vision_meta,
             "redirects": redirect_res,
+            "page_analysis": page_res,                                   # ← NEW
             "upi_analysis": upi_res,
             "huggingface_ai": hf_res,
             "virustotal_api": vt_res,
