@@ -355,6 +355,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
             _card("Verdict", verdict, borderColor: color, textColor: color),
             const SizedBox(height: 8),
             _card("Recommendation", recommendation),
+            if ((result["reasons"] as List?)?.isNotEmpty ?? false)
+              _card("Why this was flagged",
+                  (result["reasons"] as List).map((r) => "• $r").join("\n")),
             const SizedBox(height: 8),
             _card("Decoded Payload", payload),
             const SizedBox(height: 8),

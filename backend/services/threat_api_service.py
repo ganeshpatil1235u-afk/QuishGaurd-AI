@@ -74,11 +74,11 @@ class ThreatAPIService:
             "cashback", "secure-login",
         ])
         return {
-            "service": "VirusTotal v3 (heuristic mode)",
+            "service": "Offline keyword check (NO VirusTotal key set)",
             "malicious_votes": 5 if bad else 0,
             "flagged": bad,
             "threat_score": 75.0 if bad else 5.0,
-            "note": "Set VIRUSTOTAL_API_KEY for live API",
+            "note": "Set VIRUSTOTAL_API_KEY for live API", "is_live": False,
         }
 
     def check_whois(self, url: str) -> dict:
@@ -115,7 +115,7 @@ class ThreatAPIService:
                         creation = creation[0] if creation else None
                     if creation:
                         age_days = max(
-                            0, (datetime.now() - creation).days
+                            0, (datetime.now(creation.tzinfo) - creation).days
                         )
                     registrar = (
                         str(w.registrar)
@@ -126,7 +126,11 @@ class ThreatAPIService:
                     pass
 
             if age_days is None:
-                age_days = 3 if is_free else 400
+                # lookup failed -> UNKNOWN. Do NOT pretend the domain is old/safe.
+                return {"domain": domain, "registrar": registrar, "age_days": None,
+                        "is_free_tld": is_free, "is_zero_day": False,
+                        "age_risk": "UNKNOWN", "risk_score": 55.0 if is_free else 25.0,
+                        "note": "WHOIS unavailable"}
 
             if age_days < 7:
                 risk, label = 90.0, "CRITICAL"

@@ -7,8 +7,6 @@ Pillow==10.2.0
 numpy==1.26.4
 requests==2.31.0
 python-whois==0.9.4
-
-# REMOVED: pyzbar (unused in code + needs libzbar0 system lib -> install fails)
-# OPTIONAL heavy AI model — uncomment only if you want the HF model:
-# transformers==4.37.2
-# torch==2.2.0
+scikit-learn==1.4.2
+joblib==1.4.2
+pytest==8.1.1

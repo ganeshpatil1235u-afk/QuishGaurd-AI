@@ -8,3 +8,8 @@ frontend/build/
 .vscode/
 Thumbs.db
 *.log
+__pycache__/
+*.joblib
+build/
+*.log
+ml/data/

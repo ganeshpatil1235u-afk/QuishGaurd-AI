@@ -1,0 +1,6 @@
+services:
+  quishguard:
+    build: ./backend
+    ports: ["8000:8000"]
+    environment:
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}

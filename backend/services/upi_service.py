@@ -37,6 +37,10 @@ class UPIIntentEngine:
         "dbs": "DBS", "hsbc": "HSBC", "bandhan": "Bandhan", "csbpay": "CSB",
         "dcb": "DCB", "jsb": "Janata Sahakari", "mahb": "Bank of Maharashtra",
         "uco": "UCO Bank", "cbin": "Central Bank", "andb": "Andhra Bank",
+        "naviaxis": "Navi", "navi": "Navi", "slc": "Slice", "sliceaxis": "Slice",
+        "superyes": "super.money", "fifederal": "Fi Money", "yesbankltd": "BharatPe / Yes Bank",
+        "yesg": "Groww", "jio": "Jio Payments", "pz": "PayZapp", "tapicici": "Tata Neu",
+        "kiwi": "Kiwi", "cred": "CRED", "axisb": "CRED", "ptybl": "Paytm",
         "ikwik": "MobiKwik", "abfspay": "Aditya Birla", "cmsidfc": "IDFC First",
     }
 
@@ -122,9 +126,9 @@ class UPIIntentEngine:
                           "detail": f"'{payee_vpa}' is not a valid UPI ID format"})
             risk_score += 40
         elif known_psp is None:
-            risks.append({"severity": "MEDIUM", "type": "UNKNOWN_HANDLE",
-                          "detail": f"Handle '@{handle}' is not a recognised UPI provider"})
-            risk_score += 25
+            risks.append({"severity": "LOW", "type": "UNKNOWN_HANDLE",
+                          "detail": f"Handle '@{handle}' is not in our list yet - check the payee name"})
+            risk_score += 8
 
         # 4. Genuinely suspicious local parts (phone numbers are NOT flagged)
         if vpa_valid and not is_phone_vpa:
