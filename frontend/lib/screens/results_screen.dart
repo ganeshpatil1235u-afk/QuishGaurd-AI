@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
@@ -17,119 +16,112 @@ class ResultsScreen extends StatefulWidget {
 class _ResultsScreenState extends State<ResultsScreen> {
   Map<String, dynamic> get result => widget.result;
 
-  static const int _autoRedirectSeconds = 3;
-  static const String _phonePePackage = "com.phonepe.app";
-
-  Timer? _timer;
-  int _countdown = _autoRedirectSeconds;
-  bool _autoRedirectActive = false;
   bool _launching = false;
 
   String get _payload => (result["decoded_payload"] ?? "").toString();
   String get _level => (result["risk_level"] ?? "UNKNOWN").toString();
-  bool get _isUpi => (result["payload_type"] ?? "") == "UPI";
 
-  // Only hand off to PhonePe when the backend says SAFE (never for MEDIUM+)
-  bool get _canRedirect =>
-      _isUpi && _level == "SAFE" && result["redirect_to_phonepe"] == true;
+  Map get _targetApp => (result["target_app"] as Map?) ?? {};
+  String get _targetCategory => (_targetApp["category"] ?? "text").toString();
+  String get _targetLabel => (_targetApp["label"] ?? "App").toString();
+  bool get _isPayment => _targetCategory == "payment";
 
-  @override
-  void initState() {
-    super.initState();
-    if (_canRedirect) {
-      _autoRedirectActive = true;
-      _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (!mounted) return;
-        if (_countdown <= 1) {
-          t.cancel();
-          setState(() => _autoRedirectActive = false);
-          _openPhonePe();
-        } else {
-          setState(() => _countdown--);
-        }
-      });
-    }
-  }
+  // Backend decides these — the app just obeys.
+  bool get _canAutoOpen => result["auto_open_allowed"] == true;
+  bool get _canManualOpen => result["manual_open_allowed"] == true;
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _cancelAutoRedirect() {
-    _timer?.cancel();
-    setState(() => _autoRedirectActive = false);
-  }
-
-  /// Opens PhonePe with the scanned UPI payment request.
-  ///  1) Android intent aimed straight at com.phonepe.app  (most reliable)
-  ///  2) upi:// link -> Android app chooser                (fallback)
-  ///  3) phonepe:// deep link                              (last resort)
-  /// If everything fails, the exact reason is shown on screen.
-  Future<void> _openPhonePe() async {
+  /// Opens the right app for this QR.
+  ///
+  /// Payment QRs (upi://): always shows the Android app chooser, so the user
+  /// picks from whichever UPI apps are installed on THIS phone (PhonePe,
+  /// Google Pay, Paytm, etc.) rather than being sent to one hardcoded app.
+  ///
+  /// Everything else (WhatsApp, Telegram, forms, browser links, email, tel,
+  /// sms...): opened the normal Android way, which already routes to the
+  /// matching installed app when one is registered for that link.
+  Future<void> _openTargetApp() async {
     if (_launching) return;
     _launching = true;
 
-    final errors = <String>[];
+    try {
+      if (_isPayment) {
+        await _openPaymentChooser();
+      } else {
+        await _openGenericLink();
+      }
+    } finally {
+      _launching = false;
+    }
+  }
+
+  Future<void> _openPaymentChooser() async {
     final payload = _payload.trim();
 
     if (!payload.toLowerCase().startsWith("upi://")) {
       _toast("Not a UPI payment QR");
-      _launching = false;
+      return;
+    }
+
+    // 1) Force the system app chooser so the user picks which payment app
+    //    to use, even if one app is set as the phone's default handler.
+    if (Platform.isAndroid) {
+      try {
+        final intent = AndroidIntent(
+          action: 'action_view',
+          data: payload,
+        );
+        await intent.launchChooser('Pay with');
+        return;
+      } catch (e) {
+        // fall through to the generic launch below
+      }
+    }
+
+    // 2) Fallback: generic upi:// launch (shows the chooser on most phones
+    //    if no default payment app is set).
+    try {
+      final ok = await launchUrl(
+        Uri.parse(payload),
+        mode: LaunchMode.externalApplication,
+      );
+      if (ok) return;
+    } catch (_) {}
+
+    _toast(
+      "Could not open a payment app.\n"
+      "Make sure at least one UPI app (PhonePe, Google Pay, Paytm, etc.) "
+      "is installed.",
+      seconds: 8,
+    );
+  }
+
+  Future<void> _openGenericLink() async {
+    String link = _payload.trim();
+    final category = _targetCategory;
+
+    // mailto:, tel:, sms: already carry their own scheme — leave them as is.
+    // Everything web-like gets an https:// prefix if it's missing one.
+    final needsHttpPrefix = [
+      "whatsapp", "telegram", "instagram", "facebook", "form", "maps",
+      "youtube", "linkedin", "playstore", "browser",
+    ];
+    if (needsHttpPrefix.contains(category) && !link.toLowerCase().startsWith("http")) {
+      link = "https://$link";
+    }
+
+    final uri = Uri.tryParse(link);
+    if (uri == null) {
+      _toast("Could not open this link");
       return;
     }
 
     try {
-      // 1) Direct intent to the PhonePe app
-      if (Platform.isAndroid) {
-        try {
-          final intent = AndroidIntent(
-            action: 'action_view',
-            data: payload,
-            package: _phonePePackage,
-            flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-          );
-          await intent.launch();
-          return;
-        } catch (e) {
-          errors.add("PhonePe intent: $e");
-        }
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) {
+        _toast("Could not open $_targetLabel. Is the app installed?");
       }
-
-      // 2) Generic upi:// (lets the user pick a UPI app)
-      try {
-        final ok = await launchUrl(
-          Uri.parse(payload),
-          mode: LaunchMode.externalApplication,
-        );
-        if (ok) return;
-        errors.add("upi:// returned false");
-      } catch (e) {
-        errors.add("upi://: $e");
-      }
-
-      // 3) phonepe:// deep link
-      try {
-        final query = Uri.tryParse(payload)?.query ?? "";
-        final ok = await launchUrl(
-          Uri.parse("phonepe://pay?$query"),
-          mode: LaunchMode.externalApplication,
-        );
-        if (ok) return;
-        errors.add("phonepe:// returned false");
-      } catch (e) {
-        errors.add("phonepe://: $e");
-      }
-
-      _toast(
-        "Could not open PhonePe.\n"
-        "Is PhonePe installed?\n\n"
-        "${errors.join('\n')}",
-        seconds: 12,
-      );
-    } finally {
-      _launching = false;
+    } catch (e) {
+      _toast("Failed to open: $e");
     }
   }
 
@@ -144,25 +136,46 @@ class _ResultsScreenState extends State<ResultsScreen> {
     );
   }
 
-  Widget _phonePeSection(Color color) {
-    const phonePePurple = Color(0xFF5F259F);
+  IconData _targetIcon(String category) {
+    switch (category) {
+      case "payment": return Icons.account_balance_wallet;
+      case "whatsapp": return Icons.chat;
+      case "telegram": return Icons.send;
+      case "instagram": return Icons.camera_alt;
+      case "facebook": return Icons.thumb_up;
+      case "form": return Icons.description;
+      case "maps": return Icons.location_on;
+      case "youtube": return Icons.play_circle_fill;
+      case "linkedin": return Icons.work;
+      case "playstore": return Icons.shop;
+      case "email": return Icons.email;
+      case "phone": return Icons.call;
+      case "sms": return Icons.sms;
+      default: return Icons.open_in_new;
+    }
+  }
 
-    if (_canRedirect) {
+  // Tap-only: nothing opens automatically. SAFE shows a normal action
+  // button; MEDIUM shows an explicit "anyway, at your risk" button;
+  // HIGH/CRITICAL shows nothing (blocked by the backend flags).
+  Widget _openSection(Color color) {
+    const paymentPurple = Color(0xFF5F259F);
+    final buttonColor = _isPayment ? paymentPurple : const Color(0xFF6366F1);
+
+    if (_canAutoOpen) {
       return Column(
         children: [
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _openPhonePe,
-              icon: const Icon(Icons.open_in_new),
+              onPressed: _openTargetApp,
+              icon: Icon(_targetIcon(_targetCategory)),
               label: Text(
-                _autoRedirectActive
-                    ? "Opening PhonePe in $_countdown..."
-                    : "Pay with PhonePe",
+                _isPayment ? "Choose Payment App" : "Open in $_targetLabel",
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: phonePePurple,
+                backgroundColor: buttonColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -171,25 +184,19 @@ class _ResultsScreenState extends State<ResultsScreen> {
               ),
             ),
           ),
-          if (_autoRedirectActive)
-            TextButton(
-              onPressed: _cancelAutoRedirect,
-              child: const Text("Cancel",
-                  style: TextStyle(color: Colors.white54)),
-            ),
           const SizedBox(height: 8),
         ],
       );
     }
 
     // MEDIUM: allow an explicit, deliberate override. HIGH/CRITICAL: blocked.
-    if (_isUpi && _level == "MEDIUM") {
+    if (_canManualOpen) {
       return Column(
         children: [
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: _openPhonePe,
+              onPressed: _openTargetApp,
               style: OutlinedButton.styleFrom(
                 foregroundColor: color,
                 side: BorderSide(color: color),
@@ -198,7 +205,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text("Proceed to PhonePe anyway (at your risk)"),
+              child: Text(
+                _isPayment
+                    ? "Proceed to payment anyway (at your risk)"
+                    : "Open in $_targetLabel anyway (at your risk)",
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -298,22 +309,48 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                payloadType,
-                style: const TextStyle(fontSize: 12, color: Colors.white54),
-              ),
+            // Badge (payload type + which app this QR belongs to)
+            Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    payloadType,
+                    style: const TextStyle(fontSize: 12, color: Colors.white54),
+                  ),
+                ),
+                if (_targetCategory != "text")
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(_targetIcon(_targetCategory), size: 12, color: const Color(0xFFC7D2FE)),
+                        const SizedBox(width: 4),
+                        Text(
+                          _targetLabel,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFC7D2FE)),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
 
-            // PhonePe button first, so it is visible without scrolling
-            _phonePeSection(color),
+            // Open-in-app button first, so it is visible without scrolling
+            _openSection(color),
 
             _card("Verdict", verdict, borderColor: color, textColor: color),
             const SizedBox(height: 8),
@@ -383,7 +420,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
               "🔧 Debug",
               "Backend engine: ${result["engine_version"] ?? "OLD BACKEND"}\n"
               "Risk level: $level\n"
-              "redirect_to_phonepe: ${result["redirect_to_phonepe"]}",
+              "Target app: $_targetCategory ($_targetLabel)\n"
+              "auto_open_allowed: ${result["auto_open_allowed"]}\n"
+              "manual_open_allowed: ${result["manual_open_allowed"]}",
             ),
             const SizedBox(height: 12),
 

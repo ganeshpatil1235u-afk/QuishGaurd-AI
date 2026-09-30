@@ -17,7 +17,7 @@ dependencies:
   url_launcher: ^6.3.0
   android_intent_plus: ^5.2.0
   permission_handler: ^11.3.0
-  vibration: ^1.8.4
+  
 
 dev_dependencies:
   flutter_test:

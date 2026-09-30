@@ -31,6 +31,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   bool _scanned = false;
   String _backendStatus = "Checking...";
   Color _statusColor = Colors.grey;
+  double _zoom = 0.0; // 0.0 = no zoom, 1.0 = max zoom
+  double _zoomAtPinchStart = 0.0;
 
   // API URL
   //
@@ -413,7 +415,21 @@ class _ScannerScreenState extends State<ScannerScreen>
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(22),
                   child: _hasPermission
-                      ? Stack(
+                      ? GestureDetector(
+                      onScaleStart: (_) => _zoomAtPinchStart = _zoom,
+                      onScaleUpdate: (details) async {
+                        // details.scale: 1.0 = no change, >1 = pinch out (zoom in),
+                        // <1 = pinch in (zoom out).
+                        final delta = (details.scale - 1.0) * 0.8;
+                        final newZoom =
+                            (_zoomAtPinchStart + delta).clamp(0.0, 1.0);
+                        if ((newZoom - _zoom).abs() < 0.01) return;
+                        setState(() => _zoom = newZoom);
+                        try {
+                          await cameraController.setZoomScale(newZoom);
+                        } catch (_) {}
+                      },
+                      child: Stack(
                           children: [
                             MobileScanner(
                               controller: cameraController,
@@ -452,7 +468,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                                 ),
                               ),
                           ],
-                        )
+                        ),
+                    )
                       : _buildPermissionDenied(),
                 ),
               ),
@@ -490,7 +507,9 @@ class _ScannerScreenState extends State<ScannerScreen>
                         fontSize: 10,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
+                    _buildZoomSlider(),
+                    const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -606,6 +625,37 @@ class _ScannerScreenState extends State<ScannerScreen>
               : BorderSide.none,
         ),
       ),
+    );
+  }
+
+  Widget _buildZoomSlider() {
+    return Row(
+      children: [
+        const Icon(Icons.zoom_out, color: Colors.white38, size: 18),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            ),
+            child: Slider(
+              value: _zoom,
+              min: 0.0,
+              max: 1.0,
+              activeColor: const Color(0xFF6366F1),
+              inactiveColor: Colors.white12,
+              onChanged: (v) async {
+                setState(() => _zoom = v);
+                try {
+                  await cameraController.setZoomScale(v);
+                } catch (_) {}
+              },
+            ),
+          ),
+        ),
+        const Icon(Icons.zoom_in, color: Colors.white38, size: 18),
+      ],
     );
   }
 

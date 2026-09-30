@@ -1,22 +1,23 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.example.frontend"
-    compileSdk = 34  // ← Changed
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     defaultConfig {
         applicationId = "com.example.frontend"
-        minSdk = 21  // ← Changed
-        targetSdk = 34  // ← Changed
+        minSdk = flutter.minSdkVersion
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -24,13 +25,9 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

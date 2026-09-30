@@ -1,0 +1,253 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/ganes/.gradle/wrapper/dists/gradle-9.1.0-all/7wzd0jkjit61aq2p43wpjgij9/gradle-9.1.0/lib/native-platform-0.22-milestone-28.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Initialized native services in: C:\Users\ganes\.gradle\native
+Initialized jansi services in: C:\Users\ganes\.gradle\native
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Starting process 'command 'C:\Program Files\Android\Android Studio\jbr\bin\java.exe''. Working directory: C:\Users\ganes\.gradle\.tmp\tmp-jvm3842919577662047920probe Command: C:\Program Files\Android\Android Studio\jbr\bin\java.exe -Xmx32m -Xms32m -cp . JavaProbe
+Successfully started process 'command 'C:\Program Files\Android\Android Studio\jbr\bin\java.exe''
+Received JVM installation metadata from 'C:\Program Files\Android\Android Studio\jbr': {JAVA_HOME=C:\Program Files\Android\Android Studio\jbr, JAVA_VERSION=21.0.10, JAVA_VENDOR=JetBrains s.r.o., RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=21.0.10+-14961533-b1163.108, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.10+-14961533-b1163.108, VM_VENDOR=JetBrains s.r.o., OS_ARCH=amd64}
+Starting process 'Gradle build daemon'. Working directory: C:\Users\ganes\.gradle\daemon\9.1.0 Command: C:\Program Files\Android\Android Studio\jbr\bin\java.exe --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED -XX:MaxMetaspaceSize=4G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError -Xmx8G -Dfile.encoding=UTF-8 -Duser.country=IN -Duser.language=en -Duser.variant -cp C:\Users\ganes\.gradle\wrapper\dists\gradle-9.1.0-all\7wzd0jkjit61aq2p43wpjgij9\gradle-9.1.0\lib\gradle-daemon-main-9.1.0.jar -javaagent:C:\Users\ganes\.gradle\wrapper\dists\gradle-9.1.0-all\7wzd0jkjit61aq2p43wpjgij9\gradle-9.1.0\lib\agents\gradle-instrumentation-agent-9.1.0.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 9.1.0
+Successfully started process 'Gradle build daemon'
+An attempt to start the daemon took 1.515 secs.
+The client will now receive all logging from the daemon (pid: 27680). The daemon log file: C:\Users\ganes\.gradle\daemon\9.1.0\daemon-27680.out.log
+Daemon will be stopped at the end of the build 
+Using 16 worker leases.
+Received JVM installation metadata from 'C:\Program Files\Android\Android Studio\jbr': {JAVA_HOME=C:\Program Files\Android\Android Studio\jbr, JAVA_VERSION=21.0.10, JAVA_VENDOR=JetBrains s.r.o., RUNTIME_NAME=Java(TM) SE Runtime Environment, RUNTIME_VERSION=21.0.10+-14961533-b1163.108, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.10+-14961533-b1163.108, VM_VENDOR=JetBrains s.r.o., OS_ARCH=amd64}
+Watching the file system is configured to be enabled if available
+Now considering [D:\Quishgaurd AI\frontend\android] as hierarchies to watch
+File system watching is active
+Starting Build
+Now considering [C:\src\flutter\packages\flutter_tools\gradle, D:\Quishgaurd AI\frontend\android] as hierarchies to watch
+
+> Configure project :gradle
+Evaluating project ':gradle' using build file 'C:\src\flutter\packages\flutter_tools\gradle\build.gradle.kts'.
+Resolved plugin [id: 'org.gradle.java-gradle-plugin']
+Resolved plugin [id: 'org.gradle.groovy']
+Resolved plugin [id: 'org.gradle.kotlin.kotlin-dsl', version: '6.2.0']
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '1.9.20']
+Build ca38f396-c9e3-476d-a319-53966a666fb0 is started
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+file or directory 'C:\src\flutter\packages\flutter_tools\gradle\src\main\java', not found
+Resolved plugin [id: 'dev.flutter.flutter-plugin-loader', version: '1.0.0']
+Resolved plugin [id: 'com.android.application', version: '9.0.1', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.android', version: '2.3.20', apply: false]
+Resolve mutations for :gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#117,Execution worker Thread 2,5,main]) started.
+:gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#117,Execution worker Thread 2,5,main]) started.
+
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':gradle:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :gradle:compileKotlin (Thread[#117,Execution worker Thread 2,5,main]) started.
+:gradle:compileKotlin (Thread[#117,Execution worker Thread 2,5,main]) started.
+
+> Task :gradle:compileKotlin UP-TO-DATE
+Caching disabled for task ':gradle:compileKotlin' because:
+  Build cache is disabled
+Skipping task ':gradle:compileKotlin' as it is up-to-date.
+Resolve mutations for :gradle:compileJava (Thread[#117,Execution worker Thread 2,5,main]) started.
+:gradle:compileJava (Thread[#117,Execution worker Thread 2,5,main]) started.
+
+> Task :gradle:compileJava NO-SOURCE
+Skipping task ':gradle:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :gradle:compileGroovy (Thread[#117,Execution worker Thread 2,5,main]) started.
+:gradle:compileGroovy (Thread[#117,Execution worker Thread 2,5,main]) started.
+
+> Task :gradle:compileGroovy NO-SOURCE
+Skipping task ':gradle:compileGroovy' as it has no source files and no previous output files.
+Resolve mutations for :gradle:pluginDescriptors (Thread[#117,Execution worker Thread 2,5,main]) started.
+:gradle:pluginDescriptors (Thread[#117,Execution worker Thread 2,5,main]) started.
+
+> Task :gradle:pluginDescriptors UP-TO-DATE
+Caching disabled for task ':gradle:pluginDescriptors' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':gradle:pluginDescriptors' as it is up-to-date.
+Resolve mutations for :gradle:processResources (Thread[#117,Execution worker Thread 2,5,main]) started.
+:gradle:processResources (Thread[#117,Execution worker Thread 2,5,main]) started.
+
+> Task :gradle:processResources UP-TO-DATE
+Caching disabled for task ':gradle:processResources' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':gradle:processResources' as it is up-to-date.
+Resolve mutations for :gradle:classes (Thread[#117,Execution worker Thread 2,5,main]) started.
+:gradle:classes (Thread[#130,Execution worker Thread 15,5,main]) started.
+
+> Task :gradle:classes UP-TO-DATE
+Skipping task ':gradle:classes' as it has no actions.
+Resolve mutations for :gradle:jar (Thread[#130,Execution worker Thread 15,5,main]) started.
+:gradle:jar (Thread[#130,Execution worker Thread 15,5,main]) started.
+
+> Task :gradle:jar UP-TO-DATE
+Caching disabled for task ':gradle:jar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':gradle:jar' as it is up-to-date.
+Settings evaluated using settings file 'D:\Quishgaurd AI\frontend\android\settings.gradle.kts'.
+Projects loaded. Root project using build file 'D:\Quishgaurd AI\frontend\android\build.gradle.kts'.
+Included projects: [root project 'android', project ':app']
+
+> Configure project :
+Evaluating root project 'android' using build file 'D:\Quishgaurd AI\frontend\android\build.gradle.kts'.
+
+> Configure project :app
+Evaluating project ':app' using build file 'D:\Quishgaurd AI\frontend\android\app\build.gradle.kts'.
+Resolved plugin [id: 'com.android.application']
+Resolved plugin [id: 'dev.flutter.flutter-gradle-plugin']
+WARNING: The option setting 'android.builtInKotlin=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.newDsl=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+Using default execution profile
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+C/C++: android.ndkVersion from module build.gradle is [28.2.13676358]
+C/C++: android.ndkPath from module build.gradle is not set
+C/C++: ndk.dir in local.properties is not set
+C/C++: Not considering ANDROID_NDK_HOME because support was removed after deprecation period.
+C/C++: sdkFolder is C:\Users\ganes\AppData\Local\Android\sdk
+All projects evaluated.
+Task path ':app:compileFlutterBuildRelease' matched project ':app'
+Task name matched 'compileFlutterBuildRelease'
+Selected primary task 'compileFlutterBuildRelease' from project :app
+Tasks to be executed: [task ':app:compileFlutterBuildRelease']
+Tasks that were excluded: []
+Resolve mutations for :app:compileFlutterBuildRelease (Thread[#115,included builds,5,main]) started.
+:app:compileFlutterBuildRelease (Thread[#115,included builds,5,main]) started.
+
+> Task :app:compileFlutterBuildRelease
+Caching disabled for task ':app:compileFlutterBuildRelease' because:
+  Build cache is disabled
+  Caching has not been enabled for the task
+Task ':app:compileFlutterBuildRelease' is not up-to-date because:
+  Task has failed previously.
+Starting process 'command 'C:\src\flutter\bin\flutter.bat''. Working directory: D:\Quishgaurd AI\frontend Command: C:\src\flutter\bin\flutter.bat --quiet assemble --no-version-check --depfile D:\Quishgaurd AI\frontend\build\app\intermediates\flutter\release/flutter_build.d --output D:\Quishgaurd AI\frontend\build\app\intermediates\flutter\release -dTargetFile=lib/main.dart -dTargetPlatform=android -dBuildMode=release -dTrackWidgetCreation=true -dFlavor= -dAndroidArchs=android-arm android-arm64 android-x64 -dMinSdkVersion=24 android_aot_bundle_release_android-arm android_aot_bundle_release_android-arm64 android_aot_bundle_release_android-x64
+Successfully started process 'command 'C:\src\flutter\bin\flutter.bat''
+D:\Quishgaurd AI\frontend\.dart_tool\package_config.json does not exist.
+Did you run this command from the same directory as your pubspec.yaml file?
+D:\Quishgaurd AI\frontend\.dart_tool\package_config.json does not exist.
+Did you run this command from the same directory as your pubspec.yaml file?
+Target gen_dart_plugin_registrant failed: Error: 
+Target dart_build failed: Error: 
+
+
+> Task :app:compileFlutterBuildRelease FAILED
+Build ca38f396-c9e3-476d-a319-53966a666fb0 is closed
+
+[Incubating] Problems report is available at: file:///D:/Quishgaurd%20AI/frontend/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildRelease'.
+> Process 'command 'C:\src\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 13s
+5 actionable tasks: 1 executed, 4 up-to-date
+Watched directory hierarchies: [C:\src\flutter\packages\flutter_tools\gradle]
