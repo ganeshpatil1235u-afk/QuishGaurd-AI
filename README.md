@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/assets/images/logo.png" width="110" alt="QuishGuard AI logo"/>
+
 
 # QuishGuard AI
 
